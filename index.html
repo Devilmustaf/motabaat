@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#239298">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -19,7 +23,7 @@
 <div class="app">
 <header class="top">
  <div class="brand"><div class="logo">💳</div><div><h1>متابعة الاستحقاقات | إدارة الديون والالتزامات</h1><p>تابع مستحقاتك، سجّل القبض، واعرف التزاماتك بوضوح</p></div></div>
- <div class="top-actions"><button class="btn btn-light" onclick="exportData()">⬇ تصدير نسخة احتياطية</button><button class="btn btn-light" onclick="document.getElementById('importFile').click()">⬆ استيراد نسخة</button><button class="btn btn-primary" onclick="openCustomer()">＋ إضافة زبون</button><input id="importFile" type="file" accept="application/json" hidden onchange="importData(event)"></div>
+ <div class="top-actions"><button class="btn btn-light" id="installAppBtn" type="button" onclick="installApp()">📲 تثبيت التطبيق</button><button class="btn btn-light" onclick="exportData()">⬇ تصدير نسخة احتياطية</button><button class="btn btn-light" onclick="document.getElementById('importFile').click()">⬆ استيراد نسخة</button><button class="btn btn-primary" onclick="openCustomer()">＋ إضافة زبون</button><input id="importFile" type="file" accept="application/json" hidden onchange="importData(event)"></div>
 </header>
 <section class="stats">
  <div class="stat teal"><div class="label">إجمالي الديون المتبقية</div><div class="value" id="sTotal">٠ د.ع</div><small>مجموع المبالغ غير المقبوضة</small></div>
@@ -78,6 +82,21 @@ function dateText(s){if(!s)return '—';let [y,m,d]=s.split('-');return `${d}/${
 function remaining(c){return Math.max(0,Number(c.amount)-c.payments.reduce((a,p)=>a+Number(p.amount),0))}
 function status(c){if(remaining(c)<=0)return 'paid';if(c.due<today())return 'overdue';if(c.due===today())return 'today';return 'normal'}
 function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
+
+let deferredInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;const b=$('installAppBtn');if(b)b.style.display='none';toast('تم تثبيت التطبيق بنجاح')});
+async function installApp(){
+ if(deferredInstallPrompt){deferredInstallPrompt.prompt();const choice=await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;if(choice&&choice.outcome==='accepted')toast('جارٍ تثبيت التطبيق');else toast('يمكنك تثبيت التطبيق لاحقاً');return;}
+ const ua=navigator.userAgent||'';
+ if(/iphone|ipad|ipod/i.test(ua)){toast('للتثبيت: اضغط مشاركة ثم إضافة إلى الشاشة الرئيسية');return;}
+ if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches){toast('التطبيق مثبت بالفعل');return;}
+ toast('للتثبيت: افتح قائمة Chrome ⋮ ثم اختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية');
+}
+if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
+ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(err=>console.warn('Service worker registration failed:',err)));
+}
+
 function closeModal(id){$(id).classList.remove('show')}
 function openModal(id){$(id).classList.add('show')}
 function openCustomer(id=null){$('customerForm').reset();$('editId').value='';$('customerModalTitle').textContent=id?'تعديل بيانات الزبون':'إضافة زبون جديد';if(id){let c=customers.find(x=>x.id===id);if(!c)return;$('editId').value=id;$('custName').value=c.name;$('custPhone').value=c.phone||'';$('custAmount').value=new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(c.amount);$('custDue').value=c.due;$('custNotes').value=c.notes||''}else $('custDue').value=today();openModal('customerModal')}
