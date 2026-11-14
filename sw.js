@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motabaat-estihqaqat-v1';
+const CACHE_NAME = 'motabaat-estihqaqat-v2';
 const APP_FILES = [
   './',
   './index.html',
